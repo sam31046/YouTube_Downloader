@@ -32,67 +32,131 @@ pytube -l your_link
 pytube --itag 17 zh-TW your_link
 """
 
-from pytube import YouTube
-from pytube import Playlist
 
-link = 'your_link'
-loca = 'your_path'
-playlist_link = ''
-single_video_url_in_playlist = ''
-
-
-def download_progress(stream, chunk, remains):
-    total = stream.filesize  # Get file total size
-    percent = (total - remains) / total * 100  # Calculate percent
-    print(f'Downloading... {percent:05.2f}', end='\r')  # Print status
+def Youtube_download_progress(vid, chunk, bytes_remaining):
+    total_size = vid.filesize
+    bytes_downloaded = total_size - bytes_remaining
+    percentage_of_completion = bytes_downloaded / total_size * 100
+    totalsz = (total_size / 1024) / 1024
+    totalsz = round(totalsz, 1)
+    remain = (bytes_remaining / 1024) / 1024
+    remain = round(remain, 1)
+    dwnd = (bytes_downloaded / 1024) / 1024
+    dwnd = round(dwnd, 1)
+    percentage_of_completion = round(percentage_of_completion, 2)
+    # Print status
     # '\r' means to replace the text printed previously
+    """
+    This is an example of single line. As for multiple lines, have to set cursors.
+    Example:
+    import time
+    for ii in range(100):
+        print(f"\rPercent: {ii + 1} %", end=" " * 20)
+        time.sleep(1)
+    """
+    print(f'Download Progress: {percentage_of_completion}%')
+    print(f'Total Size: {totalsz} MB')
+    print(f'Downloaded: {dwnd} MB')
+    print(f'Remaining:{remain} MB\n')
 
 
-def download_complete(callback_thing_one, callback_thing_two):
+def Youtube_download_complete(vid, file_handle):
     print('Downloaded Successfully!')
-    print('File at: ', loca)
+    print('File at: ', location)
 
 
-def youtube_download(url='', location=''):
-    yt_video = YouTube(url, on_progress_callback=download_progress
-                       , on_complete_callback=download_complete)
-
-    # Video title
-    print(yt_video.title)
+# Download single video
+def Youtube_video_download(url='', location=''):
+    yt_video = YouTube(url, on_progress_callback=Youtube_download_progress,
+                       on_complete_callback=Youtube_download_complete)
+    """
     # Video thumbnail url
     print(yt_video.thumbnail_url)
     # Check all supported format
     print(yt_video.streams)
-
+    """
+    # Video title
+    print(f'Downloading: {yt_video.title}')
     # Find mp4 type and the highest resolution
     # Example:
     # yt_video.streams.filter().get_by_resolution('360p').download(output_path,filename)
     video = yt_video.streams.filter(file_extension='mp4').get_highest_resolution()
     print('Filter = \n', video)
 
-    # Download
+    # Download and display location
     video_file = video.download(location)
     print(video_file)
+    return yt_video
 
 
-def youtube_playlist_download(playlist_url='', location=''):
+# Filter: By title keywords or by entire playlist
+def Youtube_filter_keyword_search(playlist, keyword):
+    video_titles = []
+    video_urls = []
+    for video, url in zip(playlist.videos, playlist.video_urls):
+        if (keyword in str.lower(video.title)) or (keyword == ''):
+            print(video.title)  # List all titles in the playlist
+            video_titles.append(str(video_titles))
+            video_urls.append(url)
+    return video_titles, video_urls
+
+
+def Youtube_playlist_download(playlist_url='', location=''):
     playlist = Playlist(playlist_url)
-
-    # Can be a video link in a list
-    if single_video_url_in_playlist != '':
-        single_in_playlist = Playlist(single_video_url_in_playlist)
-        print('Single video in the list')
-        playlist = single_in_playlist
-
     # Playlist title
     print(playlist.title)
-
-    # Download videos with loop
-    for video in playlist.videos:
-        video.streams.first().download(location)
+    start_download = 'n'
+    keyword = ''
+    titles = ''
+    urls = ''
+    while start_download == 'n':
+        titles, urls = Youtube_filter_keyword_search(playlist, keyword)
+        keyword = str.lower(input("Please enter title keyword: "))
+        print("Enter 'y' to start downloading.")
+        if (keyword == 'y') or (keyword == 'yes'):
+            start_download = 'y'
+    # Download videos after filtering
+    for title, url in zip(titles, urls):
+        try:
+            Youtube_video_download(url, location)
+        except:
+            print(f'Video: {title} cannot download, step to the next video.\n\n')
+        else:
+            print(f'Video: {title} Downloaded Successfully!\n\n')
 
 
 if __name__ == '__main__':
-    youtube_download(link, loca)
+    from pytube import YouTube, Playlist
 
-    # youtube_playlist_download(playlist_link, loca)
+    link = ''           # A YouTube Video url link
+    location = ''       # Download video to path
+    playlist_link = ''  # A YouTube playlist url link
+    print("Welcome to YouTube Downloader!")
+    print("Enter 'q' to exit...")
+    while True:
+        # Input download mode
+        download_mode = str(input("Please enter '1' or '2' to select a download mode:\n"
+                                  "1. Download a video with a video url.\n"
+                                  "2. Download several videos with a playlist url.\n"))
+        if str.lower(download_mode) == 'q' or str.lower(download_mode) == 'quit':
+            break
+
+        # Input path
+        location = input("Please enter the path you want to save the videos(Default path: Same as program file.):\n")
+        if str.lower(location) == 'q' or str.lower(location) == 'quit':
+            break       # Quit program
+
+        # Input url
+        link = input("Please enter your url:\n")
+        if str.lower(link) == 'q' or str.lower(link) == 'quit':
+            break
+        # Execute
+        elif download_mode == '1':
+            Youtube_video_download(link, location)
+            break
+        elif download_mode == '2':
+            Youtube_playlist_download(link, location)
+            break
+        else:
+            print("Please enter 1 or 2.\n")
+    print("Program Closed.")
